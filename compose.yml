@@ -1,0 +1,39 @@
+services:
+  gitlab-server:
+    image: gitlab/gitlab-ce:latest
+    container_name: gitlab-server
+    restart: always
+    environment:
+      GITLAB_ROOT_EMAIL: ${GITLAB_ROOT_EMAIL}
+      GITLAB_ROOT_PASSWORD: ${GITLAB_ROOT_PASSWORD}
+      GITLAB_OMNIBUS_CONFIG: |
+        external_url '${EXTERNAL_URL}'
+        nginx['listen_port'] = 80
+        nginx['listen_https'] = false
+        nginx['redirect_http_to_https'] = false
+        puma['worker_processes'] = 0
+        prometheus_monitoring['enable'] = false
+        postgresql['shared_buffers'] = "256MB"
+        sidekiq['concurrency'] = 0
+    volumes:
+      - ./gitlab/config:/etc/gitlab
+      - ./gitlab/logs:/var/log/gitlab
+      - ./gitlab/data:/var/opt/gitlab
+    ports:
+      - ${HTTP_PORT:-80}:80
+      - ${SSH_PORT:-22}:22
+    deploy:
+      resources:
+        limits:
+          memory: 8G
+
+  gitlab-runner:
+    image: gitlab/gitlab-runner:latest
+    container_name: gitlab-runner
+    restart: always
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./gitlab-runner/config:/etc/gitlab-runner
+    network_mode: "host"
+    depends_on:
+      - gitlab-server
