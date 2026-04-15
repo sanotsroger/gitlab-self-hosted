@@ -22,10 +22,6 @@ services:
     ports:
       - ${HTTP_PORT:-80}:80
       - ${SSH_PORT:-22}:22
-    deploy:
-      resources:
-        limits:
-          memory: 8G
 
   gitlab-runner:
     image: gitlab/gitlab-runner:latest
