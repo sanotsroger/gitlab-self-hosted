@@ -1,6 +1,12 @@
+volumes:
+  gitlab_config:
+  gitlab_logs:
+  gitlab_data:
+  gitlab_runner_data:
+
 services:
   gitlab-server:
-    image: gitlab/gitlab-ce:latest
+    image: gitlab/gitlab-ce:18.11.7-ce.0
     container_name: gitlab-server
     restart: always
     environment:
@@ -14,11 +20,11 @@ services:
         puma['worker_processes'] = 0
         prometheus_monitoring['enable'] = false
         postgresql['shared_buffers'] = "256MB"
-        sidekiq['concurrency'] = 0
+        sidekiq['concurrency'] = 5
     volumes:
-      - ./gitlab/config:/etc/gitlab
-      - ./gitlab/logs:/var/log/gitlab
-      - ./gitlab/data:/var/opt/gitlab
+      - gitlab_config:/etc/gitlab
+      - gitlab_logs:/var/log/gitlab
+      - gitlab_data:/var/opt/gitlab
     ports:
       - ${HTTP_PORT:-80}:80
       - ${SSH_PORT:-22}:22
@@ -33,7 +39,7 @@ services:
     restart: always
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-      - ./gitlab-runner/config:/etc/gitlab-runner
+      - gitlab_runner_data:/etc/gitlab-runner
     network_mode: "host"
     depends_on:
       - gitlab-server
