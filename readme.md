@@ -24,6 +24,22 @@ Se uma mensage semelhante aparecer então esta tydo ok
 run: registry: (pid 3714) 56s; run: log: (pid 1878) 107s
 ```
 
+Para testar o `Registry` e ver se esta tudo ok, vamos tentar uma conexão a partir de um terminal fora do container.
+
+```shell
+docker login localhost:5050
+```
+
+Se tudo foi configurado corretamente, uma mensagem semelhante a abaixo devera ser exibida.
+
+```shell
+WARNING! Your credentials are stored unencrypted in '/home/user/.docker/config.json'.
+Configure a credential helper to remove this warning. See
+https://docs.docker.com/go/credential-store/
+
+Login Succeeded
+```
+
 ## Gitlab Runner
 
 Comando que o `Gitlab` irá gerar para criar o `Runner`.

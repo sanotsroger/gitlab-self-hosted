@@ -54,6 +54,7 @@ services:
     ports:
       - ${HTTP_PORT:-80}:80
       - ${SSH_PORT:-22}:22
+      - ${REGISTRY_PORT:-5050}:5050
     networks:
       gitlab-network:
         ipv4_address: ${GITLAB_IP}
