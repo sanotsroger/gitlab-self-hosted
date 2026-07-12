@@ -1,7 +1,1 @@
 .env
-
-# Gitlab
-gitlab/*
-
-# Gitlab Runner
-gitlab-runner/config/*

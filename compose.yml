@@ -1,3 +1,10 @@
+networks:
+  gitlab-network:
+    external: true
+    ipam:
+      config:
+        - subnet: ${CONTAINERS_SUBNET}/24
+
 volumes:
   gitlab_config:
   gitlab_logs:
@@ -6,14 +13,14 @@ volumes:
 
 services:
   gitlab-server:
-    image: gitlab/gitlab-ce:18.11.7-ce.0
+    image: gitlab/gitlab-ce:${GITLAB_VERSION:-18.11.7-ce.0}
     container_name: gitlab-server
     restart: always
     environment:
       GITLAB_ROOT_EMAIL: ${GITLAB_ROOT_EMAIL}
       GITLAB_ROOT_PASSWORD: ${GITLAB_ROOT_PASSWORD}
       GITLAB_OMNIBUS_CONFIG: |
-        external_url '${EXTERNAL_URL}'
+        external_url '${EXTERNAL_URL}'       
         nginx['listen_port'] = 80
         nginx['listen_https'] = false
         nginx['redirect_http_to_https'] = false
@@ -21,6 +28,25 @@ services:
         prometheus_monitoring['enable'] = false
         postgresql['shared_buffers'] = "256MB"
         sidekiq['concurrency'] = 5
+        # Registry para imagens docker
+        registry_external_url '${REGISTRY_URL}'
+        registry['enable'] = true
+        registry['token_realm'] = '${EXTERNAL_URL}'
+        registry_nginx['enable'] = true
+        registry_nginx['listen_https'] = false
+        registry_nginx['listen_port'] = 5050
+        registry_nginx['proxy_set_headers']['X-Forwarded-Proto'] = 'https'
+        registry_nginx['proxy_set_headers']['X-Forwarded-Ssl'] = 'on'
+        # Otimizações
+        gitlab_rails['session_expire_delay'] = 10080  # 7 days
+        gitlab_rails['backup_keep_time'] = 604800  # 7 days
+        gitlab_rails['gitlab_email_enabled'] = false
+        prometheus['enable'] = false
+        prometheus['monitor_kubernetes'] = false
+        postgresql['max_worker_processes'] = 4
+        puma['worker_proccesses'] = 0
+        gitlab_kas['enable'] = false
+        sentinel['enable'] = false
     volumes:
       - gitlab_config:/etc/gitlab
       - gitlab_logs:/var/log/gitlab
@@ -28,18 +54,24 @@ services:
     ports:
       - ${HTTP_PORT:-80}:80
       - ${SSH_PORT:-22}:22
+    networks:
+      gitlab-network:
+        ipv4_address: ${GITLAB_IP}
     deploy:
       resources:
         limits:
           memory: 8G
 
   gitlab-runner:
-    image: gitlab/gitlab-runner:latest
+    image: gitlab/gitlab-runner:${GITLAB_RUNNER_VERSION:-latest}
     container_name: gitlab-runner
     restart: always
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - gitlab_runner_data:/etc/gitlab-runner
-    network_mode: "host"
+    #network_mode: "host"
+    networks:
+      gitlab-network:
+        ipv4_address: ${GITLAB_RUNNER_IP}
     depends_on:
       - gitlab-server
