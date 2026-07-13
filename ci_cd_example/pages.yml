@@ -1,0 +1,13 @@
+stages:
+  - pages
+
+pages:
+  stage: pages
+  script:
+    - mkdir public
+    - echo "<h1>GitLab Pages 🎉</h1>" > public/index.html
+  artifacts:
+    paths:
+      - public
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
