@@ -1,5 +1,6 @@
 networks:
   gitlab-network:
+    name: ${GITLAB_NETWORK:-gitlab-name}
     external: true
     ipam:
       config:
@@ -10,6 +11,7 @@ volumes:
   gitlab_logs:
   gitlab_data:
   gitlab_runner_data:
+  gitlab_runner_token:
 
 services:
   gitlab-server:
@@ -56,10 +58,12 @@ services:
         pages_nginx['listen_port'] = ${PAGES_PORT_INTERNAL:-8090}
         pages_nginx['listen_https'] = false
         pages_nginx['redirect_http_to_https'] = false
+        gitlab_rails['monitoring_whitelist'] = ['127.0.0.0/8', '${CONTAINERS_SUBNET}/24']
     volumes:
       - gitlab_config:/etc/gitlab
       - gitlab_logs:/var/log/gitlab
       - gitlab_data:/var/opt/gitlab
+      - ./scripts:/scripts:ro
     ports:
       - ${HTTP_PORT:-80}:80
       - ${SSH_PORT:-22}:22
@@ -68,10 +72,39 @@ services:
     networks:
       gitlab-network:
         ipv4_address: ${GITLAB_IP}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/-/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 20
+      start_period: 300s
     deploy:
       resources:
         limits:
           memory: 8G
+
+  gitlab-runner-token-init:
+    image: curlimages/curl:latest
+    container_name: gitlab-runner-token-init
+    restart: "no"
+    user: root
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - gitlab_runner_token:/token
+      - ./scripts:/scripts:ro
+    networks:
+      gitlab-network:
+        ipv4_address: ${GITLAB_TOKEN_IP}
+    depends_on:
+      gitlab-server:
+        condition: service_healthy
+    environment:
+      GITLAB_INTERNAL_URL: http://${GITLAB_IP}
+      GITLAB_RUNNER_DESCRIPTION: ${GITLAB_RUNNER_DESCRIPTION}
+      GITLAB_RUNNER_TAGS: ${GITLAB_RUNNER_TAGS}
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - "apk add --no-cache bash docker-cli jq >/dev/null 2>&1 && bash /scripts/token-init.sh"
 
   gitlab-runner:
     image: gitlab/gitlab-runner:${GITLAB_RUNNER_VERSION:-latest}
@@ -80,8 +113,19 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - gitlab_runner_data:/etc/gitlab-runner
+      - gitlab_runner_token:/token:ro
+      - ./scripts:/scripts:ro
     networks:
       gitlab-network:
         ipv4_address: ${GITLAB_RUNNER_IP}
     depends_on:
-      - gitlab-server
+      gitlab-runner-token-init:
+        condition: service_completed_successfully
+    environment:
+      GITLAB_URL: ${GITLAB_URL}
+      GITLAB_IP: ${GITLAB_IP}
+      GITLAB_NETWORK: ${GITLAB_NETWORK}
+      GITLAB_RUNNER_DESCRIPTION: ${GITLAB_RUNNER_DESCRIPTION}
+      GITLAB_RUNNER_TAGS: ${GITLAB_RUNNER_TAGS}
+      GITLAB_RUNNER_DOCKER_IMAGE: ${GITLAB_RUNNER_DOCKER_IMAGE:-alpine:3.21}
+    entrypoint: ["/bin/bash", "/scripts/runner-entrypoint.sh"]
