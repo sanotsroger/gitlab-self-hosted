@@ -122,7 +122,6 @@ services:
       gitlab-runner-token-init:
         condition: service_completed_successfully
     environment:
-      GITLAB_URL: ${GITLAB_URL}
       GITLAB_IP: ${GITLAB_IP}
       GITLAB_NETWORK: ${GITLAB_NETWORK}
       GITLAB_RUNNER_DESCRIPTION: ${GITLAB_RUNNER_DESCRIPTION}
