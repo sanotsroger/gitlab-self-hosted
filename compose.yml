@@ -47,6 +47,15 @@ services:
         puma['worker_proccesses'] = 0
         gitlab_kas['enable'] = false
         sentinel['enable'] = false
+        # Gitlab Pages
+        pages_external_url '${PAGES_URL}'
+        gitlab_pages['enable'] = true
+        gitlab_pages['namespace_in_path'] = true
+        pages_nginx['enable'] = true
+        gitlab_pages['internal_gitlab_server'] = 'http://localhost:80'
+        pages_nginx['listen_port'] = 3080
+        pages_nginx['listen_https'] = false
+        pages_nginx['redirect_http_to_https'] = false
     volumes:
       - gitlab_config:/etc/gitlab
       - gitlab_logs:/var/log/gitlab
@@ -55,6 +64,7 @@ services:
       - ${HTTP_PORT:-80}:80
       - ${SSH_PORT:-22}:22
       - ${REGISTRY_PORT:-5050}:5050
+      - ${PAGES_PORT:-3080}:3080
     networks:
       gitlab-network:
         ipv4_address: ${GITLAB_IP}
