@@ -19,13 +19,14 @@ if [ ! -f /etc/gitlab-runner/config.toml ]; then
     --docker-image "${GITLAB_RUNNER_DOCKER_IMAGE}" \
     --docker-volumes "/var/run/docker.sock:/var/run/docker.sock"
 
+  # O atributo network_mode esta como host para que o Kaniko funcione corretamente
   echo "Aplicando ajustes customizados no config.toml..."
   sed -i -E '
     s/^concurrent = 1$/concurrent = 4/
     /^check_interval = 0$/a connection_max_age = "15m0s"
     s/^([[:space:]]*)url = "http:\/\/'"${GITLAB_IP}"'"$/&\n\1clone_url = "http:\/\/'"${GITLAB_IP}"'"/
     s/^([[:space:]]*)executor = "docker"[[:space:]]*$/&\n\1request_concurrency = 2/
-    s/^([[:space:]]*)network_mtu = 0$/&\n\1network_mode = "gitlab-network"/
+    s/^([[:space:]]*)network_mtu = 0$/&\n\1network_mode = "host"/
   ' /etc/gitlab-runner/config.toml
 else
   echo "Runner já registrado, pulando registro e ajustes."
